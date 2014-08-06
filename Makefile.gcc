@@ -1,0 +1,175 @@
+# Specify the name of the library file, without ".so"
+NAME = kailleraclient
+VERSION = 1.0.1
+
+# Debug
+DEBUG = 1
+
+# Trace
+#TRACE = 1
+
+###############################################
+#	Declare variables
+##############################################
+ifndef	CPUTYPE
+	CPUTYPE	= i686
+endif
+
+ifeq	($(CPUTYPE),i686)
+	ppro = ppro
+endif
+
+ifneq	($(CPUTYPE),i686)
+	NAME := $(NAME)$(CPUTYPE)
+endif
+
+##############################################
+#	Specify paths/files
+##############################################
+
+objdir	= obj/gcc/
+srcdir	= src/
+
+alldir	= common \
+	kaillera \
+	kaillera/kcore \
+	p2p \
+	p2p/core \
+	player \
+	.
+
+incdir	= $(foreach dir,$(alldir),-I$(srcdir)$(dir)) -I/include
+
+lib = -lSDL
+
+autobj += \
+	k_framecache.o \
+	k_socket.o \
+	nSettings.o \
+	nThread.o \
+	linux.o \
+	\
+	k_instruction.o \
+	kaillera_core.o \
+	kaillera_ui_sdl.o \
+	\
+	p2p_core.o \
+	p2p_instruction.o \
+	p2p_message.o \
+	p2p_ui_sdl.o \
+	\
+	player.o \
+	\
+	kailleraclient.o
+
+allobj = \
+	$(foreach file,$(autobj:.o=.c), \
+		$(foreach dir,$(alldir),$(subst $(srcdir),$(objdir), \
+		$(firstword $(subst .c,.o,$(wildcard $(srcdir)$(dir)/$(file))))))) \
+	$(foreach file,$(autobj:.o=.cpp), \
+		$(foreach dir,$(alldir),$(subst $(srcdir),$(objdir), \
+		$(firstword $(subst .cpp,.o,$(wildcard $(srcdir)$(dir)/$(file))))))) \
+
+	
+##############################################
+#	Specify compiler/linker/assembler
+##############################################
+
+CC	= gcc
+CXX	= g++
+LD	= $(CXX)
+AR	= ar
+
+ifdef	DEBUG
+	CFLAGS = -O0 -g
+	CXXFLAGS = -O0 -g
+	DEF += -DDEBUG
+ifdef 	TRACE
+	DEF += -DTRACE
+endif
+else
+	CFLAGS = -O2
+	CXXFLAGS = -O2
+endif
+
+CFLAGS   += -Wno-write-strings -Wno-unused-result -fpic
+CXXFLAGS += -Wno-write-strings -Wno-unused-result -fpic
+
+CFLAGS += -U__cdecl -U__fastcall -D__cdecl="" -D__fastcall="" -U__stdcall -D__stdcall=""
+CXXFLAGS += -U__cdecl -U__fastcall -D__cdecl="" -D__fastcall="" -U__stdcall -D__stdcall=""
+
+DEF += -DCPUTYPE=$(CPUTYPE) -DLINUX -Dlinux
+
+DEF += -DFILENAME=$(NAME)
+
+CFLAGS += $(DEF) $(incdir)
+CXXFLAGS += $(DEF) $(incdir)
+
+LDFLAGS = -shared -Wl,-soname,lib$(NAME).so
+ARFLAGS = rcs
+
+ifndef DEBUG
+LDFLAGS += -s
+endif
+
+##############################################
+#	Specify paths
+##############################################
+
+vpath %.cpp	$(foreach dir,$(alldir),$(srcdir)$(dir)/ )
+vpath %.c	$(foreach dir,$(alldir),$(srcdir)$(dir)/ )
+vpath %.h	$(foreach dir,$(alldir),$(srcdir)$(dir)/ )
+
+vpath %.o 	$(foreach dir,$(alldir),$(objdir)$(dir)/ )
+
+##############################################
+#	Targets
+##############################################
+
+.PHONY:	all init clean
+
+ifeq ($(MAKELEVEL),0)
+all:	init $(autobj)
+	@$(MAKE) -f Makefile.gcc
+else
+all:	$(NAME)
+endif
+
+# Rule for linking the shared libarary
+ifeq ($(MAKELEVEL),1)
+$(NAME):	$(allobj)
+	@echo $(allobj)
+	@echo
+	@echo Linking shared library lib$(NAME).so.$(VERSION)...
+	@mkdir -p bin/gcc
+	@$(LD) $(CFLAGS) $(LDFLAGS) -o bin/gcc/lib$@.so.$(VERSION) $^ $(lib)
+	@echo Archiving static library lib$(NAME).a...
+	@$(AR) $(ARFLAGS) bin/gcc/lib$@.a $^
+endif
+
+# Generic rules for C/C++ files
+%.o:	%.cpp
+	@echo Compiling $<...
+	@$(CXX) $(CXXFLAGS) -c $< -o $(subst $(srcdir),$(objdir),$(<D))/$(@F)
+
+%.o:	%.c
+	@echo Compiling $<...
+	@$(CC) $(CFLAGS) -c $< -o $(subst $(srcdir),$(objdir),$(<D))/$(@F)
+
+# Phony targets
+init:
+ifdef	DEBUG
+	@echo Making debug build...
+else
+	@echo Making normal build...
+endif
+	@echo
+	@mkdir -p $(foreach dir, $(alldir),$(objdir)$(dir))
+
+clean:
+	@echo Removing all files from $(objdir)...
+	@rm -f -r $(objdir)
+
+	@echo Removing libraries file...
+	@rm -f bin/lib$(NAME).so.$(VERSION)
+	@rm -f bin/lib$(NAME).a
