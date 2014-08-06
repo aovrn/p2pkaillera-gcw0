@@ -1,0 +1,1075 @@
+diff --git a/Makefile.dingux b/Makefile.dingux
+index 067dabe..f1c983a 100644
+--- a/Makefile.dingux
++++ b/Makefile.dingux
+@@ -26,6 +26,10 @@ BUILD_C68K = 1
+ BUILD_M68K = 1
+ USE_LIBAO = 1
+ 
++KAILLERA_BUILD_PATH=../lib/p2pkaillera/
++KAILLERA_STATIC = 1
++
++
+ #
+ #	Declare variables
+ #
+@@ -111,7 +115,7 @@ alldir	= burn \
+ 
+ incdir	= $(foreach dir,$(alldir),-I$(srcdir)$(dir)) -I$(objdir)dep/generated -I/local/include -I/include/SDL
+ 
+-lib = -lstdc++ -lSDL -lSDL_image -lz
++lib = -lstdc++ -lSDL -lSDL_image -lz -lpthread
+ 
+ ifdef USE_LIBAO
+ 	lib += -lao
+@@ -200,6 +204,7 @@ depobj += \
+ 		ioapi.o unzip.o dat.o state.o zipfn.o \
+ 		\
+ 		gui_config.o gui_gfx.o gui_main.o gui_romlist.o gui_setpath.o \
++		kaillera_fba.o kaillera_api.o \
+ 		\
+ 		interface.o \
+ 		\
+@@ -353,9 +358,9 @@ LD	= $(CXX)
+ AS	= mipsel-linux-as
+ 
+ HOSTCFLAGS = $(incdir)
+-CFLAGS   = -O2 -G0 -march=mips32 -pipe -fno-builtin -fno-common -mno-shared -ffast-math \
++CFLAGS   = -G0 -march=mips32 -pipe -fno-builtin -fno-common -mno-shared -ffast-math \
+ 		-fomit-frame-pointer -fexpensive-optimizations -Wno-write-strings -DLSB_FIRST
+-CXXFLAGS = -O2 -G0 -march=mips32 -pipe -fno-builtin -fno-common -mno-shared -ffast-math \
++CXXFLAGS = -G0 -march=mips32 -pipe -fno-builtin -fno-common -mno-shared -ffast-math \
+ 		-fomit-frame-pointer -fexpensive-optimizations -Wno-write-strings -DLSB_FIRST
+ 
+ CFLAGS += -D__cdecl="" -D__fastcall=""
+@@ -366,6 +371,16 @@ ifdef USE_LIBAO
+ 	CXXFLAGS += -DUSE_LIBAO
+ endif
+ 
++
++ifdef KAILLERA_STATIC
++	lib += -L$(KAILLERA_BUILD_PATH)
++ifdef DEBUG
++	lib += -lkailleraclientd
++else
++	lib += -lkailleraclient
++endif
++endif
++
+ DEF = -DCPUTYPE=$(CPUTYPE) -DUSE_SPEEDHACKS -DBUILD_SDL
+ 
+ ifdef SPECIALBUILD
+@@ -398,9 +413,11 @@ else
+ endif
+ 
+ ifdef DEBUG
+-	CFLAGS		+= -g
+-	CXXFLAGS	+= -g
++	CFLAGS		+= -O0 -g
++	CXXFLAGS	+= -O0 -g
+ else
++	CFLAGS		+= -O2
++	CXXFLAGS	+= -O2
+ 	LDFLAGS		+= -s
+ endif
+ 
+diff --git a/Makefile.dingux-gcc b/Makefile.dingux-gcc
+index 6d74b94..caf574e 100644
+--- a/Makefile.dingux-gcc
++++ b/Makefile.dingux-gcc
+@@ -15,7 +15,7 @@ NAME = fbasdl
+ DEPEND = 1
+ 
+ # Include features for debugging drivers
+-# DEBUG = 1
++DEBUG = 1
+ 
+ # Perl is available
+ PERL = 1
+@@ -26,6 +26,10 @@ BUILD_C68K = 1
+ BUILD_M68K = 1
+ USE_LIBAO = 1
+ 
++KAILLERA_BUILD_PATH=../../../p2pkaillera/gcw0/p2pkaillera-gcw0/bin/gcc
++#KAILLERA_STATIC = 1
++KAILLERA_SO = 1
++
+ #
+ #	Declare variables
+ #
+@@ -121,6 +125,13 @@ ifdef USE_LIBAO
+ 	lib += -lao
+ endif
+ 
++ifdef KAILLERA_STATIC
++	lib += -L$(KAILELRA_BUILD_PATH) -lkailleraclient
++endif
++ifdef KAILLERA_SO
++	lib += -Llib -lkailleraclient
++endif
++
+ ifdef MINIMAL
+ drvobj	= d_cps1.o d_cps2.o d_neogeo.o
+ else
+@@ -205,6 +216,8 @@ depobj += \
+ 		\
+ 		gui_config.o gui_gfx.o gui_main.o gui_romlist.o gui_setpath.o \
+ 		\
++		kaillera_fba.o kaillera_api.o \
++		\
+ 		interface.o \
+ 		\
+ 		cd_interface.o \
+@@ -357,10 +370,17 @@ LD	= $(CXX)
+ AS	= nasm
+ 
+ HOSTCFLAGS = $(incdir)
+-CFLAGS   = -O2 -fomit-frame-pointer -Wno-write-strings -fpermissive \
++CFLAGS   = -fomit-frame-pointer -Wno-write-strings -fpermissive \
+ 		-DLSB_FIRST
+-CXXFLAGS = -O2 -fomit-frame-pointer -Wno-write-strings -fpermissive \
++CXXFLAGS = -fomit-frame-pointer -Wno-write-strings -fpermissive \
+ 		-DLSB_FIRST
++ifndef DEBUG
++CFLAGS += -O2
++CXXFLAGS += -O2
++else
++CFLAGS += -O0
++CXXFLAGS += -O0
++endif
+ 
+ CFLAGS += -U__cdecl -U__fastcall -D__cdecl="" -D__fastcall=""
+ CXXFLAGS += -U__cdecl -U__fastcall -D__cdecl="" -D__fastcall=""
+@@ -370,7 +390,7 @@ ifdef USE_LIBAO
+ 	CXXFLAGS += -DUSE_LIBAO
+ endif
+ 
+-DEF = -DCPUTYPE=$(CPUTYPE) -DUSE_SPEEDHACKS -DBUILD_SDL
++DEF = -DCPUTYPE=$(CPUTYPE) -DUSE_SPEEDHACKS -DBUILD_SDL -DGCC
+ 
+ ifdef SPECIALBUILD
+ 	DEF += -DSPECIALBUILD=$(SPECIALBUILD)
+@@ -679,6 +699,10 @@ endif
+ 	@echo
+ 	@mkdir -p $(foreach dir, $(alldir),$(objdir)$(dir))
+ 	@mkdir -p $(srcdir)dep/generated
++	@mkdir -p lib
++ifdef	KAILLERA_SO
++	@ln -f -s ../$(KAILLERA_BUILD_PATH)/libkailleraclient.so.1.0.1 lib/libkailleraclient.so
++endif
+ 
+ cleandep:
+ 	@echo Removing depend files from $(objdir)...
+@@ -688,6 +712,7 @@ clean:
+ 	@echo Removing all files from $(objdir)...
+ 	@rm -f -r $(objdir)
+ 	@rm -f -r $(ctv.h)
++	@rm lib/*
+ 
+ ifdef	PERL
+ 	@echo Removing all files generated with perl scripts...
+diff --git a/src/dep/kaillera/client/kailleraclient.h b/src/dep/kaillera/client/kailleraclient.h
+index 06818e9..75b8dea 100644
+--- a/src/dep/kaillera/client/kailleraclient.h
++++ b/src/dep/kaillera/client/kailleraclient.h
+@@ -26,6 +26,15 @@
+ #define DLLEXP __declspec(dllimport) int WINAPI
+ #endif
+ 
++#ifndef _WIN32
++# undef DLLEXP
++# define DLLEXP int
++# undef WINAPI
++# define WINAPI
++# undef HWND
++# define HWND void *
++#endif
++
+ #ifdef __cplusplus
+ extern "C" {
+ #endif
+diff --git a/src/sdl-dingux/burner.h b/src/sdl-dingux/burner.h
+index 85ff3a9..7f4e3ed 100644
+--- a/src/sdl-dingux/burner.h
++++ b/src/sdl-dingux/burner.h
+@@ -28,6 +28,7 @@
+ #include <math.h>
+ #include <assert.h>
+ #include <ctype.h>
++#include <vector>
+ 
+ #ifndef MAX_PATH
+ #define MAX_PATH 511
+@@ -209,6 +210,7 @@ int DrvExit();
+ extern char szAppBurnVer[16];
+ 
+ // run.cpp
++extern int kNetGame;
+ extern bool bShowFPS;
+ extern bool bPauseOn;
+ int RunReset();
+@@ -216,6 +218,7 @@ int RunOneFrame(bool bDraw, int fps);
+ 
+ // input.cpp
+ extern int nAnalogSpeed;
++extern UINT32 nGameInpCount;
+ int InpInit();
+ int InpExit();
+ void InpDIP();
+@@ -232,4 +235,19 @@ public:
+ 	~StringSet();
+ };
+ 
++// kaillera_fba.cpp
++typedef struct _CHAT_MSG {
++	char * msg;
++	unsigned long time;
++} CHAT_MSG;
++typedef std::vector<CHAT_MSG> CHAT;
++extern CHAT chat;
++extern int nChatLifeTime;
++
++int KailleraInitInput();
++int KailleraGetInput();
++void DoNetGame();
++void SendNetMsg(char * msg);
++void UpdateChat();
++
+ #endif // _BURNER_H_
+diff --git a/src/sdl-dingux/font.cpp b/src/sdl-dingux/font.cpp
+index 2314fab..af5d320 100644
+--- a/src/sdl-dingux/font.cpp
++++ b/src/sdl-dingux/font.cpp
+@@ -127,15 +127,15 @@ void DisplayChar (uint16 *Screen, uint8 c, uint16 resW)
+ 	}
+ }
+ 
+-void DrawString (const char *string, uint16 *screen, uint8 x, uint8 y, uint16 resW)
++void DrawString (const char *string, uint16 *screen, uint8 x, uint8 y, uint16 resW, int limit)
+ {
+ 	uint16 *Screen = screen + 2 + x + y * resW;
+-	int len = strnlen (string,50);
++	int len = strnlen (string,53);
+ 	int max_chars = resW / (font_width - 2);
+ 	int char_count = 0;
+ 	int i;
+ 	
+-	if (len > 47) len = 47;
++	if (len > limit) len =limit;
+ 	
+ 	for (i = 0; i < len; i++, char_count++)
+ 	{
+@@ -154,6 +154,11 @@ void DrawString (const char *string, uint16 *screen, uint8 x, uint8 y, uint16 re
+ 	}
+ }
+ 
++void DrawString (const char *string, uint16 *screen, uint8 x, uint8 y, uint16 resW)
++{
++	DrawString(string, screen, x, y, resW, 47);
++}
++
+ void DrawRect ( uint16 *screen, int x, int y, int w, int h, int c , uint16 resW)
+ {
+ 	uint16 cc = (c & 0x00F80000) >> 8 | (c & 0x0000F800) >> 5 | (c & 0x000000F8) >> 3;
+diff --git a/src/sdl-dingux/font.h b/src/sdl-dingux/font.h
+index 1dd47e2..4c3e7fc 100644
+--- a/src/sdl-dingux/font.h
++++ b/src/sdl-dingux/font.h
+@@ -46,6 +46,7 @@ typedef unsigned short 	uint16;
+ typedef unsigned char 	uint8;
+ 
+ void DisplayChar (uint16 *Screen, uint8 c, uint16 resW);
++void DrawString (const char *string, uint16 *screen, uint8 x, uint8 y, uint16 resW, int limit);
+ void DrawString (const char *string, uint16 *screen, uint8 x, uint8 y, uint16 resW);
+ void DrawRect ( uint16 *screen, int x, int y, int w, int h, int c, uint16 resW );
+ 
+diff --git a/src/sdl-dingux/gui_main.cpp b/src/sdl-dingux/gui_main.cpp
+index 94bd5c7..60ce954 100644
+--- a/src/sdl-dingux/gui_main.cpp
++++ b/src/sdl-dingux/gui_main.cpp
+@@ -1212,6 +1212,7 @@ void ss_prg_options(int first, int last)
+ 
+ static int run_options_static[] = {
+ 	OPTION_FBA_RUN,
++	OPTION_FBA_NETWORK,
+ 	OPTION_FBA_SOUND,
+ 	OPTION_FBA_SAMPLERATE,
+ 	OPTION_FBA_ROTATE,
+@@ -1237,6 +1238,9 @@ void put_run_option_line(unsigned char num, unsigned char y)
+ 	case OPTION_FBA_RUN:
+ 		put_string("Run game", OPTIONS_START_X, y, BLANC, gui_screen);
+ 		break;
++	case OPTION_FBA_NETWORK:
++		put_string("Network play", OPTIONS_START_X, y, BLANC, gui_screen);
++		break;
+ 	case OPTION_FBA_SOUND:
+ 		put_string( "Sound" , OPTIONS_START_X , y , BLANC , gui_screen );
+ 		put_string(abreviation_cf[6][options.sound], CONF_START_X, y, VERT, gui_screen);
+@@ -1438,7 +1442,11 @@ void ss_prog_run(void)
+ 					SDL_QuitSubSystem(SDL_INIT_VIDEO);
+ 
+ 					// run emulator here
+-					RunEmulator(nBurnDrvActive);
++					if (run_options[run_num] != OPTION_FBA_NETWORK) {
++						RunEmulator(nBurnDrvActive);
++					} else {
++						DoNetGame();
++					}
+ 
+ 					if(!(SDL_WasInit(SDL_INIT_VIDEO) & SDL_INIT_VIDEO)) {
+ 						SDL_InitSubSystem(SDL_INIT_VIDEO);
+diff --git a/src/sdl-dingux/gui_main.h b/src/sdl-dingux/gui_main.h
+index f826d14..fc0df80 100644
+--- a/src/sdl-dingux/gui_main.h
++++ b/src/sdl-dingux/gui_main.h
+@@ -40,15 +40,16 @@
+ #endif
+ 
+ #define OPTION_FBA_RUN			1
+-#define OPTION_FBA_SOUND		2
+-#define OPTION_FBA_SAMPLERATE		3
+-#define OPTION_FBA_ROTATE		4
+-#define OPTION_FBA_VSYNC		5
+-#define OPTION_FBA_SHOWFPS		6
+-#define OPTION_FBA_68K			7
+-#define OPTION_FBA_Z80			8
+-#define OPTION_FBA_ANALOG		9
+-#define OPTION_FBA_FAVORITE		10
++#define OPTION_FBA_NETWORK		2
++#define OPTION_FBA_SOUND		3
++#define OPTION_FBA_SAMPLERATE		4
++#define OPTION_FBA_ROTATE		5
++#define OPTION_FBA_VSYNC		6
++#define OPTION_FBA_SHOWFPS		7
++#define OPTION_FBA_68K			8
++#define OPTION_FBA_Z80			9
++#define OPTION_FBA_ANALOG		10
++#define OPTION_FBA_FAVORITE		11
+ 
+ #define OPTION_FBA_FIRST		OPTION_FBA_RUN
+ #define OPTION_FBA_LAST			OPTION_FBA_FAVORITE
+diff --git a/src/sdl-dingux/ioapi.h b/src/sdl-dingux/ioapi.h
+index 8309c4c..a76579f 100644
+--- a/src/sdl-dingux/ioapi.h
++++ b/src/sdl-dingux/ioapi.h
+@@ -61,6 +61,13 @@
+ #endif
+ #endif
+ 
++#ifdef GCC
++ #ifndef OF
++  #define OF(x) x
++ #endif
++#endif
++
++
+ /*
+ #ifndef ZPOS64_T
+   #ifdef _WIN32
+diff --git a/src/sdl-dingux/kaillera_api.cpp b/src/sdl-dingux/kaillera_api.cpp
+new file mode 100644
+index 0000000..f5183db
+--- /dev/null
++++ b/src/sdl-dingux/kaillera_api.cpp
+@@ -0,0 +1,39 @@
++#include "kaillera_api.h"
++
++#ifdef KAILLERA_STATIC
++
++#include "../dep/kaillera/client/kailleraclient.h"
++
++int Kaillera_Initialised;
++
++int (WINAPI *Kaillera_Get_Version) (char *version);
++int (WINAPI *Kaillera_Init) ();
++int (WINAPI *Kaillera_Shutdown) ();
++int (WINAPI *Kaillera_Set_Infos) (kailleraInfos *infos);
++int (WINAPI *Kaillera_Select_Server_Dialog) (HWND parent);
++int (WINAPI *Kaillera_Modify_Play_Values) (void *values, int size);
++int (WINAPI *Kaillera_Chat_Send) (char *text);
++int (WINAPI *Kaillera_End_Game) ();
++
++int Init_Network(void) {
++	Kaillera_Get_Version = kailleraGetVersion;
++	Kaillera_Init = kailleraInit;
++	Kaillera_Shutdown = kailleraShutdown;
++	Kaillera_Set_Infos = kailleraSetInfos;
++	Kaillera_Select_Server_Dialog = kailleraSelectServerDialog;
++	Kaillera_Modify_Play_Values = kailleraModifyPlayValues;
++	Kaillera_Chat_Send = kailleraChatSend;
++	Kaillera_End_Game = kailleraEndGame;
++
++	Kaillera_Init();
++	Kaillera_Initialised = 1;
++	return 0;
++}
++
++
++void End_Network(void) {
++	if (Kaillera_Initialised) {
++		Kaillera_Shutdown();
++	}
++}
++#endif
+diff --git a/src/sdl-dingux/kaillera_api.h b/src/sdl-dingux/kaillera_api.h
+new file mode 100644
+index 0000000..5924e84
+--- /dev/null
++++ b/src/sdl-dingux/kaillera_api.h
+@@ -0,0 +1,7 @@
++#pragma once
++
++#define KAILLERA_STATIC
++
++#ifdef KAILLERA_STATIC
++# include "../dep/kaillera/client/net.h"
++#endif
+diff --git a/src/sdl-dingux/kaillera_fba.cpp b/src/sdl-dingux/kaillera_fba.cpp
+new file mode 100644
+index 0000000..e5f6be6
+--- /dev/null
++++ b/src/sdl-dingux/kaillera_fba.cpp
+@@ -0,0 +1,441 @@
++#include "burner.h"
++#include "gui_main.h"
++#include "gui_romlist.h"
++#include "kaillera_api.h"
++#include "sdl_run.h"
++#include <sys/time.h>
++
++
++const int MAXPLAYER = 4;
++static int nPlayerInputs[MAXPLAYER], nCommonInputs, nDIPInputs;
++static int nPlayerOffset[MAXPLAYER], nCommonOffset, nDIPOffset;
++
++const int INPUTSIZE = 8 * (4 + 8);
++static unsigned char nControls[INPUTSIZE];
++
++CHAT chat;
++int nChatLifeTime = 20000; // ms
++int nChatMaxSize = 15;
++
++static int playern;
++
++//#define KAILLERA_DEBUG
++#if defined KAILLERA_DEBUG && defined FBA_DEBUG
++void OutputHex(const void * inb, int len, bool usespace){
++	char outbb[2000];
++	char * outb = outbb;
++	char HEXDIGITS [] = {
++		'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'
++	};
++	char * xx = (char*)inb;
++	for (int x = 0; x <	len; x++) {
++		int dx = *xx++;
++		int hib = (dx & 0xF0)>>4;
++		int lob = (dx & 0x0F);
++		*outb++ = HEXDIGITS[hib];
++		*outb++ = HEXDIGITS[lob];
++		if (usespace)
++			*outb++ = ' ';
++	}
++	*outb = 0;
++	dprintf("%s", outbb);
++}
++#endif
++
++// Inputs are assumed to be in the following order:
++// All player 1 controls
++// All player 2 controls (if any)
++// All player 3 controls (if any)
++// All player 4 controls (if any)
++// All common controls
++// All DIP switches
++
++int KailleraInitInput() {
++	if (nGameInpCount == 0) {
++		return 1;
++	}
++
++	struct BurnInputInfo bii;
++	memset(&bii, 0, sizeof(bii));
++
++	unsigned int i = 0;
++
++	nPlayerOffset[0] = 0;
++	do {
++		BurnDrvGetInputInfo(&bii, i);
++		i++;
++	} while (!_strnicmp(bii.szName, "P1", 2) && i <= nGameInpCount);
++	i--;
++	nPlayerInputs[0] = i - nPlayerOffset[0];
++
++	for (int j = 1; j < MAXPLAYER; j++) {
++		char szString[3] = "P?";
++		szString[1] = j + '1';
++		nPlayerOffset[j] = i;
++		while (!_strnicmp(bii.szName, szString, 2) && i < nGameInpCount) {
++			i++;
++			BurnDrvGetInputInfo(&bii, i);
++		}
++		nPlayerInputs[j] = i - nPlayerOffset[j];
++	}
++
++	nCommonOffset = i;
++	while ((bii.nType & BIT_GROUP_CONSTANT) == 0 && i < nGameInpCount){
++		i++;
++		BurnDrvGetInputInfo(&bii, i);
++	};
++	nCommonInputs = i - nCommonOffset;
++
++	nDIPOffset = i;
++	nDIPInputs = nGameInpCount - nDIPOffset;
++
++#ifdef FBA_DEBUG
++	dprintf(_T("  * Kaillera inputs configured as follows --\n"));
++	for (int j = 0; j < MAXPLAYER; j++) {
++		dprintf(_T("    p%d offset %d, inputs %d.\n"), j + 1, nPlayerOffset[j], nPlayerInputs[j]);
++	}
++	dprintf(_T("    common offset %d, inputs %d.\n"), nCommonOffset, nCommonInputs);
++	dprintf(_T("    dip offset %d, inputs %d.\n"), nDIPOffset, nDIPInputs);
++#endif
++
++	return 0;
++}
++
++int KailleraGetInput() {
++	int i, j, k;
++
++	struct BurnInputInfo bii;
++	memset(&bii, 0, sizeof(bii));
++
++	// Initialize controls to 0
++	memset(nControls, 0, INPUTSIZE);
++
++	// Pack all DIP switches + common controls + player 1 controls
++	for (i = 0, j = 0; i < nPlayerInputs[0]; i++, j++) {
++		BurnDrvGetInputInfo(&bii, i + nPlayerOffset[0]);
++		if (*bii.pVal && bii.nType == BIT_DIGITAL) {
++			nControls[j >> 3] |= (1 << (j & 7));
++		}
++	}
++	for (i = 0; i < nCommonInputs; i++, j++) {
++		BurnDrvGetInputInfo(&bii, i + nCommonOffset);
++		if (*bii.pVal) {
++			nControls[j >> 3] |= (1 << (j & 7));
++		}
++	}
++
++	// Convert j to byte count
++	j = (j + 7) >> 3;
++
++	// Analog controls/constants
++	for (i = 0; i < nPlayerInputs[0]; i++) {
++		BurnDrvGetInputInfo(&bii, i + nPlayerOffset[0]);
++		if (*bii.pVal && bii.nType != BIT_DIGITAL) {
++			if (bii.nType & BIT_GROUP_ANALOG) {
++				nControls[j++] = *bii.pShortVal >> 8;
++				nControls[j++] = *bii.pShortVal & 0xFF;
++			} else {
++				nControls[j++] = *bii.pVal;
++			}
++		}
++	}
++
++	// DIP switches
++	for (i = 0; i < nDIPInputs; i++, j++) {
++		BurnDrvGetInputInfo(&bii, i + nDIPOffset);
++		nControls[j] = *bii.pVal;
++	}
++
++	// k has the size of all inputs for one player
++	k = j + 1;
++	
++#if defined KAILLERA_DEBUG && defined FBA_DEBUG
++	dprintf("s%d: ", k);
++	OutputHex((void *) nControls, k, true)	;
++	dprintf("\n");
++#endif
++
++	// Send the control block to the Kaillera DLL & retrieve all controls
++	//if (kailleraModifyPlayValues(nControls, k) == -1) {
++	if (Kaillera_Modify_Play_Values(nControls, k) == -1) {
++		kNetGame = 0;
++		return 1;
++	}
++
++#if defined KAILLERA_DEBUG && defined FBA_DEBUG
++	dprintf("r%d: ", INPUTSIZE / 4);
++	OutputHex((void *) nControls, INPUTSIZE / 4, true);
++	dprintf("\n");
++#endif
++
++	// Decode Player 1 input block
++	for (i = 0, j = 0; i < nPlayerInputs[0]; i++, j++) {
++		BurnDrvGetInputInfo(&bii, i + nPlayerOffset[0]);
++		if (bii.nType == BIT_DIGITAL) {
++			if (nControls[j >> 3] & (1 << (j & 7))) {
++				*bii.pVal = 0x01;
++			} else {
++				*bii.pVal = 0x00;
++			}
++		}
++	}
++	for (i = 0; i < nCommonInputs; i++, j++) {
++		BurnDrvGetInputInfo(&bii, i + nCommonOffset);
++		if (nControls[j >> 3] & (1 << (j & 7))) {
++			*bii.pVal = 0x01;
++		} else {
++			*bii.pVal = 0x00;
++		}
++	}
++
++	// Convert j to byte count
++	j = (j + 7) >> 3;
++
++	// Analog inputs
++	for (i = 0; i < nPlayerInputs[0]; i++) {
++		BurnDrvGetInputInfo(&bii, i + nDIPOffset);
++		if (bii.nType & BIT_GROUP_ANALOG) {
++			*bii.pShortVal = (nControls[j] << 8) | nControls[j + 1];
++			j += 2;
++		}
++	}
++
++	// DIP switches
++	for (i = 0; i < nDIPInputs; i++, j++) {
++		BurnDrvGetInputInfo(&bii, i + nDIPOffset);
++		*bii.pVal = nControls[j];
++	}
++
++	// Decode other player's input blocks
++	for (int l = 1; l < MAXPLAYER; l++) {
++		if (nPlayerInputs[l]) {
++			for (i = 0, j = k * (l << 3); i < nPlayerInputs[l]; i++, j++) {
++				BurnDrvGetInputInfo(&bii, i + nPlayerOffset[l]);
++				if (bii.nType == BIT_DIGITAL) {
++					if (nControls[j >> 3] & (1 << (j & 7))) {
++						*bii.pVal = 0x01;
++					} else {
++						*bii.pVal = 0x00;
++					}
++				}
++			}
++
++			for (i = 0; i < nCommonInputs; i++, j++) {
++#if 0
++				// Allow other players to use common inputs
++				BurnDrvGetInputInfo(&bii, i + nCommonOffset);
++				if (nControls[j >> 3] & (1 << (j & 7))) {
++					*bii.pVal |= 0x01;
++				}
++#endif
++			}
++
++			// Convert j to byte count
++			j = (j + 7) >> 3;
++
++			// Analog inputs/constants
++			for (i = 0; i < nPlayerInputs[l]; i++) {
++				BurnDrvGetInputInfo(&bii, i + nPlayerOffset[l]);
++				if (bii.nType != BIT_DIGITAL) {
++					if (bii.nType & BIT_GROUP_ANALOG) {
++						*bii.pShortVal = (nControls[j] << 8) | nControls[j + 1];
++						j += 2;
++					}
++				}
++			}
++
++#if 0
++			// For a DIP switch to be set to 1, ALL players must set it
++			for (i = 0; i < nDIPInputs; i++, j++) {
++				BurnDrvGetInputInfo(&bii, i + nDIPOffset);
++				*bii.pVal &= nControls[j];
++			}
++#endif
++		}
++	}
++
++	return 0;
++}
++
++// Clear old chat messages
++void UpdateChat() {
++	unsigned long tc = get_ticks_us() / 1000;
++	if (chat.size() > nChatMaxSize) {
++		CHAT::iterator it = chat.begin();
++		for (int i = 0; i < chat.size() - nChatMaxSize; i++) {
++		    it++;
++		}
++		chat.erase(chat.begin(), it);
++	}
++	for (CHAT::iterator it = chat.begin(); it != chat.end();) {
++		if (tc - (*it).time > nChatLifeTime) {
++			free((*it).msg);
++			it = chat.erase(it);
++		} else {
++			++it;
++		}
++	}
++}
++
++// Send message to other players
++void SendNetMsg(char * msg) {
++	if (msg != NULL && Kaillera_Chat_Send) {
++		Kaillera_Chat_Send(msg);
++	}
++}
++//////////////////////////////////////////////////////
++//////////////////////////////////////////////////////
++static char* CreateKailleraList() {
++	unsigned int nOldDrvSelect = nBurnDrvActive;
++	int nSize = 256 * 1024;
++	char* pList = (char*)malloc(nSize);
++	char* pName = pList;
++
++	if (pList == NULL) {
++		return NULL;
++	}
++
++#if 0
++	// Add chat option to the gamelist
++	pName += sprintf(pName, "* Chat only");
++	pName++;
++#endif
++
++	// Add to list only active game
++	//for (nBurnDrvActive = 0; nBurnDrvActive < nBurnDrvCount; nBurnDrvActive++) {
++		if(BurnDrvGetFlags() & BDF_GAME_WORKING) {
++			char* szDecoratedName = DecorateGameName(nBurnDrvActive);
++
++			if (pName + strlen(szDecoratedName) >= pList + nSize) {
++				char* pNewList;
++				nSize <<= 1;
++				pNewList = (char*)realloc(pList, nSize);
++				if (pNewList == NULL) {
++					return NULL;
++				}
++				pName -= (int)pList;
++				pList = pNewList;
++				pName += (int)pList;
++			}
++			pName += sprintf(pName, "%s", szDecoratedName);
++			pName++;
++		}
++	//}
++
++	*pName = '\0';
++	pName++;
++
++	nBurnDrvActive = nOldDrvSelect;
++
++	return pList;
++}
++
++void WINAPI kChatCallback(char* nick, char* text) {
++	dprintf("Kaillera Chat: <%s> %s", nick,  text);
++	
++	if (nChatLifeTime > 0) {
++		CHAT_MSG cmsg;
++		size_t msglen = strlen(text);
++		size_t nicklen = 0;
++		if (nick != NULL && (nicklen = strlen(nick)) > 0) {
++			msglen += (nicklen + 2);
++		}
++		cmsg.msg = (char *)malloc(msglen + 1);
++
++		int i = 0;
++		if (nicklen > 0) {
++			for (; i < nicklen; ++i) {
++				cmsg.msg[i] = toupper(nick[i]);
++			}
++			cmsg.msg[i++] = ':';
++			cmsg.msg[i++] = ' ';
++		}
++		for (; i < msglen; ++i) {
++			cmsg.msg[i] = toupper(text[nicklen == 0 ? i : i - nicklen - 2]);
++		}
++		cmsg.msg[msglen] = 0;
++		cmsg.time = get_ticks_us() / 1000;
++		chat.push_back(cmsg);
++	}
++}
++
++int WINAPI gameCallback(char* game, int player, int numplayers)
++{
++	bool bFound = false;
++
++	for (nBurnDrvActive = 0; nBurnDrvActive < nBurnDrvCount; nBurnDrvActive++) {
++		char* szDecoratedName = DecorateGameName(nBurnDrvActive);
++		if (!strcmp(szDecoratedName, game)) {
++			bFound = true;
++			break;
++		}
++	}
++	if (bFound && romlist.etat[nBurnDrvActive] == ROUGE) {
++		bFound = false;
++	}
++
++	if (!bFound) {
++		SendNetMsg("Can't find game in own gamelist");
++		KailleraInitInput();
++		KailleraGetInput();
++		Kaillera_End_Game();
++		return 1;
++	}
++
++	kNetGame = 1;
++	playern = player;
++	
++	char buf[1024];
++	snprintf(buf, 1024, "Starting %s...", game);
++	kChatCallback(NULL, buf);
++	snprintf(buf, 1024, "You are %d of %d player", player, numplayers);
++	kChatCallback(NULL, buf);
++
++	RunEmulator(nBurnDrvActive);
++
++	if (kNetGame) {
++		kNetGame = 0;
++		Kaillera_End_Game();
++	}
++
++	return 0;
++}
++
++void WINAPI kDropCallback(char *nick, int playernb) {
++	if (playernb != playern) {
++		char buf[1024];
++		snprintf(buf, 1024, "Player %d (%s) left the game", playernb, nick);
++		kChatCallback(NULL, buf);
++	}
++}
++
++void DoNetGame()
++{
++	int result = Init_Network();
++
++	kailleraInfos ki;
++	char tmpver[128];
++	char* gameList;
++
++	snprintf(tmpver, 128, APP_TITLE " v%.20s", szAppBurnVer);
++
++	gameList = CreateKailleraList();
++
++	ki.appName = tmpver;
++	ki.gameList = gameList;
++	ki.gameCallback = &gameCallback;
++	ki.chatReceivedCallback = &kChatCallback;
++	ki.clientDroppedCallback = &kDropCallback;
++	ki.moreInfosCallback = NULL;
++
++	result = Kaillera_Set_Infos(&ki);
++
++	result = Kaillera_Select_Server_Dialog(NULL);
++
++	if (gameList) {
++		free(gameList);
++		gameList = NULL;
++	}
++	
++	End_Network();
++}
+diff --git a/src/sdl-dingux/run.cpp b/src/sdl-dingux/run.cpp
+index d443245..8eaceed 100644
+--- a/src/sdl-dingux/run.cpp
++++ b/src/sdl-dingux/run.cpp
+@@ -12,26 +12,69 @@
+ 
+ extern unsigned int FBA_KEYPAD[4]; // sdlinput.cpp
+ 
++int kNetGame = 0;
+ bool bShowFPS = false;
+ bool bPauseOn = false;
++int nChatLastCount = 0;
+ 
+ int InpMake(unsigned int[]);
+ 
+-void VideoTrans();
++void VideoTrans(void (*)());
++void (*pVideoTransCallback)();
++
++void ClearBuffer()
++{
++	static int linesToErase = 0;
++	static int iteration = 0;
++	
++	if (nChatLastCount != 0 || linesToErase != 0)
++	{
++		// Erase three times after render
++		if (iteration >= 3 || nChatLastCount > linesToErase)
++		{
++			linesToErase = nChatLastCount;
++			iteration = 0;
++		}
++		
++		if (linesToErase <= 0)
++		{
++			return;
++		}
++		
++		DrawRect((uint16 *) (unsigned short *) &VideoBuffer[0],
++			0, 231 - (9 * (linesToErase - 1)), PhysicalBufferWidth, 9 * linesToErase, 0,PhysicalBufferWidth);
++		
++		if (nChatLastCount <= 0)
++		{
++		    iteration++;
++		}
++	}
++}
+ 
+ int RunReset()
+ {
+ 	nFramesEmulated = 0;
+ 	nCurrentFrame = 0;
+ 	nFramesRendered = 0;
++	
++	if (kNetGame)
++		pVideoTransCallback = &ClearBuffer;
++	else
++		pVideoTransCallback = NULL;
+ 
+ 	return 0;
+ }
+ 
++void KailleraClearInput();
++
++
+ int RunOneFrame(bool bDraw, int fps)
+ {
+ 	do_keypad();
+-	InpMake(FBA_KEYPAD);
++	if (InpMake(FBA_KEYPAD) == 0 && kNetGame)
++	{
++		KailleraGetInput();
++	}
+ 	if (!bPauseOn)
+ 	{
+ 		nFramesEmulated++;
+@@ -48,7 +91,7 @@ int RunOneFrame(bool bDraw, int fps)
+ 
+ 		if ( bDraw )
+ 		{
+-			VideoTrans();
++			VideoTrans(pVideoTransCallback);
+ 			if (bShowFPS)
+ 			{
+ 				char buf[11];
+@@ -57,7 +100,16 @@ int RunOneFrame(bool bDraw, int fps)
+ 				DrawRect((uint16 *) (unsigned short *) &VideoBuffer[0],0, 0, 60, 9, 0,PhysicalBufferWidth);
+ 				DrawString (buf, (unsigned short *) &VideoBuffer[0], 0, 0,PhysicalBufferWidth);
+ 			}
+-
++			if (nChatLifeTime > 0)
++			{
++				UpdateChat();
++				int i = chat.size() - 1;
++				for (CHAT::iterator it = chat.begin(); it != chat.end() && i >= 0; it++, i--)
++				{
++					DrawString ((*it).msg, (unsigned short *) &VideoBuffer[0], 0, 231 - (9 * i), PhysicalBufferWidth, 52);
++				}
++				nChatLastCount = chat.size();
++			}
+ 			VideoFlip();
+ 		}
+ 	} else {
+diff --git a/src/sdl-dingux/sdl_input.cpp b/src/sdl-dingux/sdl_input.cpp
+index 17623c7..5e2878c 100644
+--- a/src/sdl-dingux/sdl_input.cpp
++++ b/src/sdl-dingux/sdl_input.cpp
+@@ -251,6 +251,8 @@ void do_keypad()
+ 			bPauseOn = 0;
+ 		}
+ 	}
++
++	static int do_pause = 0;
+ 	if ((keypc & BUTTON_SL) && (keypc & BUTTON_SR)) {
+ 		if (keypc & BUTTON_Y) { 
+ 			ChangeFrameskip();
+@@ -262,11 +264,23 @@ void do_keypad()
+ 			StatedLoad(nSavestateSlot);
+ 			keypc &= ~BUTTON_A;
+ 			bPauseOn = 0;
+-		} else if (keypc & BUTTON_START) {
+-			keypc = keypad = 0;
+-			SndPause(1);
+-			gui_Run();
+-			SndPause(0);
++		} else if (keypc & BUTTON_START || do_pause != 0) {
++			if (!kNetGame || do_pause == 10)
++			{
++				do_pause = 0;
++				keypc = keypad = 0;
++				SndPause(1);
++				gui_Run();
++				SndPause(0);
++			}
++			else if (kNetGame)
++			{
++				if (do_pause == 0)
++				{
++					SendNetMsg("PAUSED");
++				}
++				++do_pause;
++			}
+ 		} else if (keypc & BUTTON_SELECT) ServiceRequest = 1;
+ 	}
+ 	else if ((keypc & BUTTON_START) && (keypc & BUTTON_SELECT)) P1P2Start = 1;
+diff --git a/src/sdl-dingux/sdl_run.cpp b/src/sdl-dingux/sdl_run.cpp
+index 6c60054..99a90ee 100644
+--- a/src/sdl-dingux/sdl_run.cpp
++++ b/src/sdl-dingux/sdl_run.cpp
+@@ -86,6 +86,12 @@ void RunEmulator(int drvnum)
+ 	InpInit();
+ 	InpDIP();
+ 
++	if (kNetGame)
++	{
++		KailleraInitInput();
++		KailleraGetInput();
++	}
++	
+ 	if(DrvInit(drvnum, false) != 0) {
+ 		printf("Driver initialisation failed! Likely causes are:\n"
+ 			"- Corrupt/Missing ROM(s)\n"
+@@ -170,6 +176,10 @@ void RunEmulator(int drvnum)
+ 			}
+ 			now = timer;
+ 			ticks=now-done;
++			if (kNetGame)
++			{
++				ticks = 1; // TODO: NET
++			}
+ 			if(ticks<1) continue;
+ 			if(ticks>10) ticks=10;
+ 			for (i=0; i<ticks-1; i++)
+diff --git a/src/sdl-dingux/sdl_run.h b/src/sdl-dingux/sdl_run.h
+index e9363e0..f4a4d61 100644
+--- a/src/sdl-dingux/sdl_run.h
++++ b/src/sdl-dingux/sdl_run.h
+@@ -22,6 +22,7 @@
+ 
+ extern bool GameLooping;
+ 
++long long get_ticks_us();
+ void RunEmulator(int drvnum);
+ 
+ #endif	// _SDL_RUN_H_
+diff --git a/src/sdl-dingux/sdl_video.cpp b/src/sdl-dingux/sdl_video.cpp
+index 93fd9c7..9facd78 100644
+--- a/src/sdl-dingux/sdl_video.cpp
++++ b/src/sdl-dingux/sdl_video.cpp
+@@ -1808,10 +1808,11 @@ BLIT_TABLE blit_table[] = {
+ 	{  0,   0,   0,   0, NULL,                    NULL,                     NULL,                     NULL}
+ };
+ 
+-void VideoTrans()
++void VideoTrans(void (*callback)())
+ {
+ 	VideoBuffer = (unsigned short*)screen->pixels;
+ 	if(SDL_MUSTLOCK(screen)) SDL_LockSurface(screen);
++	if(callback != NULL) callback();
+ 	BurnerVideoTrans();
+ 	if(SDL_MUSTLOCK(screen)) SDL_UnlockSurface(screen);
+ }
