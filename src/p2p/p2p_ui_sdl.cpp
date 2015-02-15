@@ -17,7 +17,7 @@ void outp(char * line);
 void __cdecl outpf(char * arg_0, ...) {
 	char V8[1024];
 	char V88[2084];
-	sprintf(V8, "%s\r\n", arg_0);
+	sprintf(V8, "%s", arg_0);
 	va_list args;
 	va_start (args, arg_0);
 	vsprintf (V88, V8, args);
@@ -28,7 +28,7 @@ void __cdecl p2p_core_debug(char * arg_0, ...) {
 #ifdef DEBUG
 	char V8[1024];
 	char V88[2084];
-	sprintf(V8, "%s\r\n", arg_0);
+	sprintf(V8, "%s", arg_0);
 	va_list args;
 	va_start (args, arg_0);
 	vsprintf (V88, V8, args);

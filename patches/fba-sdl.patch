@@ -426,10 +426,10 @@ index 0000000..5924e84
 +#endif
 diff --git a/src/sdl-dingux/kaillera_fba.cpp b/src/sdl-dingux/kaillera_fba.cpp
 new file mode 100644
-index 0000000..e5f6be6
+index 0000000..5360e39
 --- /dev/null
 +++ b/src/sdl-dingux/kaillera_fba.cpp
-@@ -0,0 +1,441 @@
+@@ -0,0 +1,444 @@
 +#include "burner.h"
 +#include "gui_main.h"
 +#include "gui_romlist.h"
@@ -763,7 +763,7 @@ index 0000000..e5f6be6
 +}
 +
 +void WINAPI kChatCallback(char* nick, char* text) {
-+	dprintf("Kaillera Chat: <%s> %s", nick,  text);
++	dprintf("Kaillera Chat: <%s> %s\n", nick,  text);
 +	
 +	if (nChatLifeTime > 0) {
 +		CHAT_MSG cmsg;
@@ -838,6 +838,9 @@ index 0000000..e5f6be6
 +		char buf[1024];
 +		snprintf(buf, 1024, "Player %d (%s) left the game", playernb, nick);
 +		kChatCallback(NULL, buf);
++	}
++	else {
++		kNetGame = 0;
 +	}
 +}
 +

@@ -10,6 +10,11 @@
 #include <map>
 #include <string>
 
+#include <sys/ioctl.h>
+#include <net/if.h> 
+#include <netinet/in.h>
+
+
 char file[5000];
 char * subm;
 
@@ -50,21 +55,28 @@ void nSettings::DefaultCfg() {
 	// force default settings
 	SETTING set;
 	settings.clear();
-	
+
+	char mac[128];
+	memset(mac, 0, 128);
+	if (GetMac(mac, 127)) {
+		set.sval = mac;
+	} else {
+		set.sval = "gcwuser";
+	}
+
 	set.type = STR_SETTING;
-	set.sval = "user1";
 	set.dval = 0;
 	set.desc = "Username must be unique on kaillera server";
 	settings["username"] = set;
 	
 	set.type = STR_SETTING;
-	set.sval = "p2p";
+	set.sval = "client";
 	set.dval = 0;
 	set.desc = "p2pKaillera library mode (p2p, client, playback)";
 	settings["mode"] = set;
 	
 	set.type = STR_SETTING;
-	set.sval = "192.168.1.1:27888";
+	set.sval = "178.62.203.143:27888";
 	set.dval = 0;
 	set.desc = "Address and port of server in kaillera client mode";
 	settings["kaillera_server"] = set;
@@ -205,4 +217,51 @@ void nSettings::set_str(char * key, char * val)
 	settings[key].type = STR_SETTING;
 	settings[key].sval = val;
 	WriteCfg();
+}
+
+bool nSettings::GetMac(char * mac, size_t size) {
+	struct ifreq ifr;
+	struct ifconf ifc;
+	char buf[1024];
+	int success = 0;
+	
+	int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
+	if (sock == -1) {
+		return false;
+	}
+	
+	ifc.ifc_len = sizeof(buf);
+	ifc.ifc_buf = buf;
+	if (ioctl(sock, SIOCGIFCONF, &ifc) == -1) {
+		return false;
+	}
+	
+	struct ifreq* it = ifc.ifc_req;
+	const struct ifreq* const end = it + (ifc.ifc_len / sizeof(struct ifreq));
+	
+	for (; it != end; ++it) {
+		strcpy(ifr.ifr_name, it->ifr_name);
+		if (ioctl(sock, SIOCGIFFLAGS, &ifr) == 0) {
+			if (!(ifr.ifr_flags & IFF_LOOPBACK) &&
+				strncmp(ifr.ifr_name, "wlan", 4) == 0) { // don't count loopback
+				if (ioctl(sock, SIOCGIFHWADDR, &ifr) == 0) {
+					success = 1;
+					break;
+				}
+			}
+		}
+		else {
+			return false;
+		}
+	}
+	
+	unsigned char mac_address[6];
+	
+	if (success) {
+		memcpy(mac_address, ifr.ifr_hwaddr.sa_data, 6);
+    		snprintf(mac, size, "gcw%02x%02x%02x", mac_address[3], mac_address[4], mac_address[5]);
+		return true;
+	}
+
+	return false;
 }

@@ -26,4 +26,5 @@ protected:
 	static void LoadCfg();
 	static void WriteCfg();
 	static void DefaultCfg();
+	static bool GetMac(char * buf, size_t size);
 };

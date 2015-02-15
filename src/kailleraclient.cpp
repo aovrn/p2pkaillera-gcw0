@@ -381,7 +381,8 @@ extern "C" {
 	}
 	void KAILLERA_DLLEXP kailleraSetInfos(kailleraInfos *infos_){
 		infos = *infos_;
-		strncpy(APP, infos.appName, 127);
+		strncpy(APP, "[gcw0] ", 7);
+		strncpy(APP + 7, infos.appName, 120);
 		
 		if (gamelist != 0)
 			free(gamelist);

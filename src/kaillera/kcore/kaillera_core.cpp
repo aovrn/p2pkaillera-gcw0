@@ -67,7 +67,9 @@ int kaillera_get_delay(){
 }
 
 bool kaillera_core_cleanup(){
+#ifdef DEBUG
 	kprintf(__FILE__ ":%i", __LINE__);
+#endif
 	if (kaillera_core_initialized){
 		
 		if (KAILLERAC.connection)
